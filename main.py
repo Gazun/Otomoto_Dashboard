@@ -4,9 +4,10 @@ import dash_html_components as html
 import plotly.express as px
 import pandas as pd
 from dash.dependencies import Input, Output
+import os
 
-
-df = pd.read_csv('data/oto_moto_czyste.csv')
+csv_files_path = os.path.join('data/oto_moto_czyste.csv')
+df = pd.read_csv(csv_files_path)
 
 # Filtrowany df
 filtered_df = df
@@ -14,7 +15,10 @@ filtered_df = df
 # Lista marek
 marki_vc = df['Marka pojazdu'].value_counts()
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, assets_folder='assets')
+
+server = app.server
+app.config.suppress_callback_exceptions = True
 
 app.layout = html.Div(
     id='container',
@@ -104,4 +108,4 @@ def filtruj_wykres(marka, model):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
