@@ -6,7 +6,7 @@ import pandas as pd
 from dash.dependencies import Input, Output
 
 
-df = pd.read_csv('oto_moto_czyste.csv')
+df = pd.read_csv('data/oto_moto_czyste.csv')
 
 # Filtrowany df
 filtered_df = df
