@@ -37,6 +37,16 @@ body {
 
 }
 
+.container_medium{
+
+  background-color: #252E3F;
+  width: 1200px;
+  margin: auto;
+  text-align: center;
+  margin-bottom: 10px;
+
+}
+
 .container_mini{
 
   background-color: #252E3F;

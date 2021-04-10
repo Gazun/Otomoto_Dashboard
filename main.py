@@ -12,7 +12,8 @@ df = pd.read_csv(csv_files_path)
 rok_min = df['Rok produkcji'].min()
 rok_max = df['Rok produkcji'].max()
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, assets_folder='assets')
+server = app.server
 
 app.layout = html.Div(
     children=[
@@ -31,6 +32,18 @@ app.layout = html.Div(
         children=[
 
             html.Div(
+                className='container_medium',
+                children=[
+
+                    dcc.Graph(
+                    id='wykres-2',
+                    config={'displayModeBar':False}
+                    )
+
+                ]
+            ),
+
+            html.Div(
                 className='filtry',
                 children=[
 
@@ -40,7 +53,7 @@ app.layout = html.Div(
                         id='drop_marka',
                         options=[{'label':i,'value':i} \
                             for i in df['Marka pojazdu'].unique()],
-                        value='BMW',
+                        value=None,
                         style = {
                             'background-color':'#52708E',
                             'color': 'rgb(37,46,63)',
@@ -55,7 +68,7 @@ app.layout = html.Div(
                         id='drop_model',
                         options=[{'label':i,'value':i} \
                             for i in df['Model pojazdu'].unique()],
-                        value='Seria 5',
+                        value=None,
                         style = {
                             'background-color':'#52708E',
                             'color': 'rgb(37,46,63)',
@@ -87,7 +100,7 @@ app.layout = html.Div(
                 children=[
 
                     dcc.Graph(
-                        id='wykres_1',
+                        id='wykres-1',
                         config={'displayModeBar':False}
                     )
 
@@ -107,9 +120,9 @@ app.layout = html.Div(
     [Input('slider-1','value')]
 )
 def wyswietl_rok(value):
-    min = value[0]
-    max = value[1]
-    return f'{min} do {max}'
+    min_v = value[0]
+    max_v = value[1]
+    return f'{min_v} do {max_v}'
 
 # Zmiana modelu do wybrania
 @app.callback(
@@ -125,7 +138,7 @@ def zmien_marke(value):
 
 
 @app.callback(
-    Output('wykres_1', 'figure'),
+    Output('wykres-1', 'figure'),
     [Input('drop_marka','value'),
     Input('drop_model','value'),
     Input('slider-1','value')]
@@ -159,6 +172,43 @@ def update_wykres_1(marka, model, lata):
     })
 
     return fig_1
+
+@app.callback(
+    Output('wykres-2', 'figure'),
+    [Input('slider-1','value')]
+
+)
+def update_wykres_2(lata):
+
+    dff = df.copy()
+
+    rok_od = lata[0]
+    rok_do = lata[1]
+
+    dff = dff[dff['Rok produkcji'] > rok_od]
+    dff = dff[dff['Rok produkcji'] < rok_do]
+
+    df_group = dff.groupby(['Marka pojazdu']) \
+    .agg({'Cena':'count'}) \
+    .rename(columns={'Cena':'Liczba'}) \
+    .reset_index() \
+    .sort_values(by='Liczba', ascending=False)
+
+    df_group = df_group
+
+    fig = px.bar(
+        df_group,
+        x='Marka pojazdu',
+        y='Liczba',
+        height=300)
+
+    fig.update_layout({
+        'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+        'paper_bgcolor': 'rgba(0, 0, 0, 0)',
+        'font_color':'rgb(127,175,223)'
+    })
+
+    return fig
 
 
 
