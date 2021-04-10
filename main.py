@@ -9,103 +9,159 @@ import os
 csv_files_path = os.path.join('data/oto_moto_czyste.csv')
 df = pd.read_csv(csv_files_path)
 
-# Filtrowany df
-filtered_df = df
+rok_min = df['Rok produkcji'].min()
+rok_max = df['Rok produkcji'].max()
 
-# Lista marek
-marki_vc = df['Marka pojazdu'].value_counts()
-
-app = dash.Dash(__name__, assets_folder='assets')
-
-server = app.server
-app.config.suppress_callback_exceptions = True
+app = dash.Dash(__name__)
 
 app.layout = html.Div(
-    id='container',
     children=[
 
-        html.Div(
-            id='mini_container',
-            style={'width':'300px'},
-            children=[
+    html.Div(
+        id='container_header',
+        children=[
 
-                html.Div(
-                    id='tytul',
-                    children=['Wybór auta:'],
-                ),
+            html.Div('Samochody osobowe z Otomoto')
 
-                html.Br(),
+        ]
+    ),
 
-                dcc.Dropdown(
-                    id='marka',
-                    className='dropdown-class',
-                    options=[{'label':i,'value':i} for i in marki_vc.index],
-                    value='BMW'
-                ),
-
-                dcc.Dropdown(
-                    id='model',
-                    className='dropdown-class',
-                    value='Seria 3'
-                ),
-
-                html.Br()
-            ]),
+    html.Div(
+        className='container',
+        children=[
 
             html.Div(
-                id='graph_container',
+                className='filtry',
                 children=[
 
-                dcc.Graph(
-                    id='wykres',
-                    config={'displayModeBar':False}
-                )
+                    html.Div('Marka'),
 
-            ])
+                    dcc.Dropdown(
+                        id='drop_marka',
+                        options=[{'label':i,'value':i} \
+                            for i in df['Marka pojazdu'].unique()],
+                        value='BMW',
+                        style = {
+                            'background-color':'#52708E',
+                            'color': 'rgb(37,46,63)',
+                            'font-weight':'bold'
+                            }
+                    ),
+
+                    html.Br(),
+                    html.Div('Model'),
+
+                    dcc.Dropdown(
+                        id='drop_model',
+                        options=[{'label':i,'value':i} \
+                            for i in df['Model pojazdu'].unique()],
+                        value='Seria 5',
+                        style = {
+                            'background-color':'#52708E',
+                            'color': 'rgb(37,46,63)',
+                            'font-weight':'bold'
+                            }
+                    ),
+
+                    html.Br(),
+                    html.Div('Rok'),
+
+                    dcc.RangeSlider(
+                        id='slider-1',
+                        count=1,
+                        min=rok_min,
+                        max=rok_max,
+                        step=1,
+                        value=[rok_min+5, rok_max]
+                    ),
+
+                    html.Div(id='div-rok'),
+
+                    html.Div(id='test')
+
+                ]
+            ),
+
+            html.Div(
+                className='container_mini',
+                children=[
+
+                    dcc.Graph(
+                        id='wykres_1',
+                        config={'displayModeBar':False}
+                    )
+
+                ]
+            ),
+
+            html.Div(style={'clear':'both'})
+
     ])
 
+    ]
+)
+
+# Wyswietlenie roku filtra
+@app.callback(
+    Output('div-rok', 'children'),
+    [Input('slider-1','value')]
+)
+def wyswietl_rok(value):
+    min = value[0]
+    max = value[1]
+    return f'{min} do {max}'
+
+# Zmiana modelu do wybrania
+@app.callback(
+    Output('drop_model', 'options'),
+    [Input('drop_marka','value')]
+)
+def zmien_marke(value):
+    global df
+    df_temp = df[df['Marka pojazdu'] == value]
+
+    return [{'label':i,'value':i} \
+        for i in df_temp['Model pojazdu'].unique()]
 
 
 @app.callback(
-    Output('model', 'options'),
-    [Input('marka','value')]
+    Output('wykres_1', 'figure'),
+    [Input('drop_marka','value'),
+    Input('drop_model','value'),
+    Input('slider-1','value')]
 )
-def filtruj_marke(marka):
-    global filtered_df
-    filtered_df = df[df['Marka pojazdu'] == marka]
-    modele_vc = filtered_df['Model pojazdu'].value_counts()
+def update_wykres_1(marka, model, lata):
 
-    return [{'label':i,'value':i} for i in modele_vc.index]
+    dff = df.copy()
 
-@app.callback(
+    if marka is not None:
+        dff = dff[dff['Marka pojazdu'] == marka]
 
-    [Input('marka','value'), Input('model','value')]
-)
-def filtruj_marke_model(marka, model):
+    if model is not None:
+        dff = dff[dff['Model pojazdu'] == model]
 
-    global filtered_df
+    rok_od = lata[0]
+    rok_do = lata[1]
 
-    war_1 = df['Marka pojazdu'] == marka
-    war_2 = df['Model pojazdu'] == model
+    dff = dff[dff['Rok produkcji'] > rok_od]
+    dff = dff[dff['Rok produkcji'] < rok_do]
 
-    filtered_df = df[war_1 & war_2].copy()
+    fig_1 = px.box(
+        dff,
+        x='Rok produkcji',
+        y='Cena',
+        color='Rodzaj paliwa')
 
+    fig_1.update_layout({
+        'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+        'paper_bgcolor': 'rgba(0, 0, 0, 0)',
+        'font_color':'rgb(127,175,223)'
+    })
 
-@app.callback(
-    Output('wykres','figure'),
-    [Input('marka','value'), Input('model','value')]
-)
-def filtruj_wykres(marka, model):
+    return fig_1
 
-    global filtered_df
-
-    war_1 = df['Marka pojazdu'] == marka
-    war_2 = df['Model pojazdu'] == model
-
-    filtered_df = df[war_1 & war_2].copy()
-
-    return px.box(filtered_df, x='Rok produkcji', y='Cena')
 
 
 if __name__ == '__main__':
+    #app.run_server(debug=True)
     app.run_server(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
