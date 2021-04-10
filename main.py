@@ -2,6 +2,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 from dash.dependencies import Input, Output
 import os
@@ -14,6 +15,14 @@ rok_max = df['Rok produkcji'].max()
 
 app = dash.Dash(__name__, assets_folder='assets')
 server = app.server
+
+default_fig = go.Figure()
+
+default_fig.update_layout({
+    'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+    'paper_bgcolor': 'rgba(0, 0, 0, 0)',
+    'font_color':'rgb(127,175,223)'
+})
 
 app.layout = html.Div(
     children=[
@@ -37,7 +46,8 @@ app.layout = html.Div(
 
                     dcc.Graph(
                     id='wykres-2',
-                    config={'displayModeBar':False}
+                    config={'displayModeBar':False},
+                    figure=default_fig
                     )
 
                 ]
@@ -101,7 +111,8 @@ app.layout = html.Div(
 
                     dcc.Graph(
                         id='wykres-1',
-                        config={'displayModeBar':False}
+                        config={'displayModeBar':False},
+                        figure=default_fig
                     )
 
                 ]
