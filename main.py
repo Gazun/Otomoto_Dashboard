@@ -29,6 +29,9 @@ app.layout = html.Div(
 
     html.Div(
         id='container_header',
+        style={
+            'background-color':'#252E3F',
+            'margin-bottom':'10px'},
         children=[
 
             html.Div('Samochody osobowe z Otomoto')
@@ -60,7 +63,7 @@ app.layout = html.Div(
                     html.Div('Marka'),
 
                     dcc.Dropdown(
-                        id='drop_marka',
+                        id='drop-marka',
                         options=[{'label':i,'value':i} \
                             for i in df['Marka pojazdu'].unique()],
                         value=None,
@@ -71,11 +74,10 @@ app.layout = html.Div(
                             }
                     ),
 
-                    html.Br(),
                     html.Div('Model'),
 
                     dcc.Dropdown(
-                        id='drop_model',
+                        id='drop-model',
                         options=[{'label':i,'value':i} \
                             for i in df['Model pojazdu'].unique()],
                         value=None,
@@ -92,15 +94,43 @@ app.layout = html.Div(
                     dcc.RangeSlider(
                         id='slider-1',
                         count=1,
-                        min=rok_min,
+                        min=1990,
                         max=rok_max,
                         step=1,
-                        value=[rok_min+5, rok_max]
+                        value=[1990, rok_max]
                     ),
 
                     html.Div(id='div-rok'),
 
-                    html.Div(id='test')
+                    html.Br(),
+
+                    html.Div('Marka'),
+
+                    dcc.Dropdown(
+                        id='drop-marka-2',
+                        options=[{'label':i,'value':i} \
+                            for i in df['Marka pojazdu'].unique()],
+                        value=None,
+                        style = {
+                            'background-color':'#52708E',
+                            'color': 'rgb(37,46,63)',
+                            'font-weight':'bold'
+                            }
+                    ),
+
+                    html.Div('Model'),
+
+                    dcc.Dropdown(
+                        id='drop-model-2',
+                        options=[{'label':i,'value':i} \
+                            for i in df['Model pojazdu'].unique()],
+                        value=None,
+                        style = {
+                            'background-color':'#52708E',
+                            'color': 'rgb(37,46,63)',
+                            'font-weight':'bold'
+                            }
+                    )
 
                 ]
             ),
@@ -137,8 +167,19 @@ def wyswietl_rok(value):
 
 # Zmiana modelu do wybrania
 @app.callback(
-    Output('drop_model', 'options'),
-    [Input('drop_marka','value')]
+    Output('drop-model', 'options'),
+    [Input('drop-marka','value')]
+)
+def zmien_marke(value):
+    global df
+    df_temp = df[df['Marka pojazdu'] == value]
+
+    return [{'label':i,'value':i} \
+        for i in df_temp['Model pojazdu'].unique()]
+
+@app.callback(
+    Output('drop-model-2', 'options'),
+    [Input('drop-marka-2','value')]
 )
 def zmien_marke(value):
     global df
@@ -150,19 +191,38 @@ def zmien_marke(value):
 
 @app.callback(
     Output('wykres-1', 'figure'),
-    [Input('drop_marka','value'),
-    Input('drop_model','value'),
-    Input('slider-1','value')]
+    [Input('drop-marka','value'),
+    Input('drop-model','value'),
+    Input('slider-1','value'),
+    Input('drop-marka-2','value'),
+    Input('drop-model-2','value')]
 )
-def update_wykres_1(marka, model, lata):
+def update_wykres_1(marka, model, lata, marka2, model2):
 
     dff = df.copy()
 
     if marka is not None:
-        dff = dff[dff['Marka pojazdu'] == marka]
+        war1 = dff['Marka pojazdu'] == marka
 
-    if model is not None:
-        dff = dff[dff['Model pojazdu'] == model]
+        if model is not None:
+            war_1m = dff['Model pojazdu'] == model
+            war1 = war1 & war_1m
+
+
+    if marka2 is not None:
+        war2 = dff['Marka pojazdu'] == marka2
+
+        if model2 is not None:
+            war_2m = dff['Model pojazdu'] == model2
+            war2 = war2 & war_2m
+
+
+    if marka is not None and marka2 is not None:
+        dff = dff[war1 | war2]
+    elif marka is None and marka2 is not None:
+        dff = dff[war2]
+    elif marka is not None and marka2 is None:
+        dff = dff[war1]
 
     rok_od = lata[0]
     rok_do = lata[1]
@@ -170,19 +230,36 @@ def update_wykres_1(marka, model, lata):
     dff = dff[dff['Rok produkcji'] > rok_od]
     dff = dff[dff['Rok produkcji'] < rok_do]
 
-    fig_1 = px.box(
-        dff,
-        x='Rok produkcji',
-        y='Cena',
-        color='Rodzaj paliwa')
+    if dff['Marka pojazdu'].nunique() == 2:
+        fig = px.box(
+            dff,
+            x='Rok produkcji',
+            y='Cena',
+            height=380,
+            color='Marka pojazdu')
 
-    fig_1.update_layout({
+    elif dff['Marka pojazdu'].nunique() == 1 and dff['Model pojazdu'].nunique() == 2:
+        fig = px.box(
+            dff,
+            x='Rok produkcji',
+            y='Cena',
+            height=380,
+            color='Model pojazdu')
+
+    else:
+        fig = px.box(
+            dff,
+            x='Rok produkcji',
+            y='Cena',
+            height=380)
+
+    fig.update_layout({
         'plot_bgcolor': 'rgba(0, 0, 0, 0)',
         'paper_bgcolor': 'rgba(0, 0, 0, 0)',
         'font_color':'rgb(127,175,223)'
     })
 
-    return fig_1
+    return fig
 
 @app.callback(
     Output('wykres-2', 'figure'),
@@ -205,13 +282,13 @@ def update_wykres_2(lata):
     .reset_index() \
     .sort_values(by='Liczba', ascending=False)
 
-    df_group = df_group
+    df_group = df_group[:20]
 
     fig = px.bar(
         df_group,
         x='Marka pojazdu',
         y='Liczba',
-        height=300)
+        height=250)
 
     fig.update_layout({
         'plot_bgcolor': 'rgba(0, 0, 0, 0)',
@@ -224,5 +301,5 @@ def update_wykres_2(lata):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
-    #app.run_server(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
+    #app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
